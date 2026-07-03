@@ -1,0 +1,64 @@
+server:
+  port: 8085
+
+spring:
+  application:
+    name: customer-service
+
+  datasource:
+    # Dedicated H2 file — fully independent from auth-service.
+    # For production replace with MySQL/PostgreSQL driver + credentials.
+    url: jdbc:h2:file:~/thalicloud-data/customerdb;NON_KEYWORDS=USER
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: update   # additive only — never drops existing tables
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
+
+jwt:
+  # Must match auth-service secret exactly — both services share this key for JWT validation.
+  secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+
+google:
+  places:
+    # Not in use right now — GooglePlacesLocationSearchServiceImpl is kept for a future switch back
+    # but isn't registered as a @Service bean. Set GOOGLE_PLACES_API_KEY env var if it's reactivated.
+    api-key: "AIzaSyxxxxxxxxxxxxxxxx"
+    autocomplete-url: https://maps.googleapis.com/maps/api/place/autocomplete/json
+
+geoapify:
+  # Active location-search provider (GeoapifyLocationSearchServiceImpl).
+  # Set GEOAPIFY_API_KEY env var in production.  Autocomplete returns empty list when key is absent.
+  api-key: "162a1a0ca553442eb0999a571abf65a5"
+  autocomplete-url: https://api.geoapify.com/v1/geocode/autocomplete
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info
+  endpoint:
+    health:
+      show-details: when-authorized
+
+logging:
+  level:
+    com.thalicloud: DEBUG
+    org.springframework.security: INFO
+    org.hibernate.SQL: WARN
