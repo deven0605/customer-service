@@ -15,4 +15,6 @@ public interface AddressService {
     AddressResponse updateAddress(String customerPhone, UUID addressId, AddressRequest request);
 
     void deleteAddress(String customerPhone, UUID addressId);
+
+    AddressResponse setDefaultAddress(String customerPhone, UUID addressId);
 }

@@ -35,6 +35,16 @@ public class AddressServiceImpl implements AddressService {
     @Override
     @Transactional
     public AddressResponse addAddress(String customerPhone, AddressRequest req) {
+        // The customer's very first address is always the default, regardless of what
+        // the client sent — there must never be zero default addresses once one exists.
+        boolean isFirstAddress = addressRepository
+                .findByCustomerPhoneOrderByDefaultAddressDescIdAsc(customerPhone).isEmpty();
+        boolean shouldBeDefault = req.isDefaultAddress() || isFirstAddress;
+
+        if (shouldBeDefault) {
+            clearExistingDefault(customerPhone);
+        }
+
         Address address = Address.builder()
                 .customerPhone(customerPhone)
                 .label(req.getLabel())
@@ -47,7 +57,7 @@ public class AddressServiceImpl implements AddressService {
                 .pinCode(req.getPinCode())
                 .lat(req.getLat())
                 .lng(req.getLng())
-                .defaultAddress(req.isDefaultAddress())
+                .defaultAddress(shouldBeDefault)
                 .build();
 
         log.debug("Adding address for customer {}", customerPhone);
@@ -61,6 +71,10 @@ public class AddressServiceImpl implements AddressService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Address not found: " + addressId));
 
+        if (req.isDefaultAddress() && !address.isDefaultAddress()) {
+            clearExistingDefault(customerPhone);
+        }
+
         address.setLabel(req.getLabel());
         address.setFlatNo(req.getFlatNo());
         address.setBuilding(req.getBuilding());
@@ -71,7 +85,9 @@ public class AddressServiceImpl implements AddressService {
         address.setPinCode(req.getPinCode());
         address.setLat(req.getLat());
         address.setLng(req.getLng());
-        address.setDefaultAddress(req.isDefaultAddress());
+        // Never leave the customer with zero default addresses: ignore an explicit
+        // "unset" if this was the only default they had.
+        address.setDefaultAddress(req.isDefaultAddress() || address.isDefaultAddress());
 
         return toResponse(addressRepository.save(address));
     }
@@ -82,8 +98,45 @@ public class AddressServiceImpl implements AddressService {
         Address address = addressRepository.findByIdAndCustomerPhone(addressId, customerPhone)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Address not found: " + addressId));
+
+        boolean wasDefault = address.isDefaultAddress();
         addressRepository.delete(address);
         log.debug("Deleted address {} for customer {}", addressId, customerPhone);
+
+        if (wasDefault) {
+            addressRepository.findByCustomerPhoneOrderByDefaultAddressDescIdAsc(customerPhone)
+                    .stream()
+                    .findFirst()
+                    .ifPresent(next -> {
+                        next.setDefaultAddress(true);
+                        addressRepository.save(next);
+                    });
+        }
+    }
+
+    @Override
+    @Transactional
+    public AddressResponse setDefaultAddress(String customerPhone, UUID addressId) {
+        Address address = addressRepository.findByIdAndCustomerPhone(addressId, customerPhone)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Address not found: " + addressId));
+
+        if (!address.isDefaultAddress()) {
+            clearExistingDefault(customerPhone);
+            address.setDefaultAddress(true);
+            addressRepository.save(address);
+        }
+
+        return toResponse(address);
+    }
+
+    private void clearExistingDefault(String customerPhone) {
+        List<Address> currentDefaults = addressRepository.findByCustomerPhoneAndDefaultAddressTrue(customerPhone);
+        if (currentDefaults.isEmpty()) {
+            return;
+        }
+        currentDefaults.forEach(a -> a.setDefaultAddress(false));
+        addressRepository.saveAll(currentDefaults);
     }
 
     private AddressResponse toResponse(Address a) {

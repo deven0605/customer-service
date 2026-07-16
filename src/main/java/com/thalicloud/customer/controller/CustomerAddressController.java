@@ -58,4 +58,13 @@ public class CustomerAddressController {
         addressService.deleteAddress(principal.getPhone(), id);
         return ResponseEntity.ok(ApiResponse.success("Address deleted"));
     }
+
+    @PostMapping("/{id}/default")
+    public ResponseEntity<ApiResponse<AddressResponse>> setDefaultAddress(
+            @AuthenticationPrincipal CustomerPrincipal principal,
+            @PathVariable UUID id) {
+
+        AddressResponse address = addressService.setDefaultAddress(principal.getPhone(), id);
+        return ResponseEntity.ok(ApiResponse.success("Default address updated", address));
+    }
 }

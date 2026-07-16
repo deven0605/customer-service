@@ -11,6 +11,8 @@ public interface AddressRepository extends JpaRepository<Address, UUID> {
 
     List<Address> findByCustomerPhoneOrderByDefaultAddressDescIdAsc(String customerPhone);
 
+    List<Address> findByCustomerPhoneAndDefaultAddressTrue(String customerPhone);
+
     Optional<Address> findByIdAndCustomerPhone(UUID id, String customerPhone);
 
     boolean existsByIdAndCustomerPhone(UUID id, String customerPhone);
