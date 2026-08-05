@@ -25,37 +25,60 @@ public class FavouriteServiceImpl implements FavouriteService {
     @Override
     @Transactional(readOnly = true)
     public List<FavouriteResponse> getFavourites(String customerPhone) {
-        return favouriteRepository
-                .findByCustomerPhoneOrderBySavedAtDesc(customerPhone)
-                .stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
+        log.info("getFavourites: start, customerPhone={}", customerPhone);
+        try {
+            List<FavouriteResponse> response = favouriteRepository
+                    .findByCustomerPhoneOrderBySavedAtDesc(customerPhone)
+                    .stream()
+                    .map(this::toResponse)
+                    .collect(Collectors.toList());
+            log.info("getFavourites: end, customerPhone={}", customerPhone);
+            return response;
+        } catch (Exception e) {
+            log.error("getFavourites: failed, customerPhone={}", customerPhone, e);
+            throw e;
+        }
     }
 
     @Override
     @Transactional
     public FavouriteResponse addFavourite(String customerPhone, UUID kitchenId) {
-        if (favouriteRepository.existsByCustomerPhoneAndKitchenId(customerPhone, kitchenId)) {
-            throw new DuplicateResourceException("Kitchen is already in favourites");
+        log.info("addFavourite: start, customerPhone={}, kitchenId={}", customerPhone, kitchenId);
+        try {
+            if (favouriteRepository.existsByCustomerPhoneAndKitchenId(customerPhone, kitchenId)) {
+                throw new DuplicateResourceException("Kitchen is already in favourites");
+            }
+
+            Favourite fav = Favourite.builder()
+                    .customerPhone(customerPhone)
+                    .kitchenId(kitchenId)
+                    .build();
+
+            log.debug("Adding kitchen {} to favourites for customer {}", kitchenId, customerPhone);
+            FavouriteResponse response = toResponse(favouriteRepository.save(fav));
+            log.info("addFavourite: end, customerPhone={}, kitchenId={}", customerPhone, kitchenId);
+            return response;
+        } catch (Exception e) {
+            log.error("addFavourite: failed, customerPhone={}, kitchenId={}", customerPhone, kitchenId, e);
+            throw e;
         }
-
-        Favourite fav = Favourite.builder()
-                .customerPhone(customerPhone)
-                .kitchenId(kitchenId)
-                .build();
-
-        log.debug("Adding kitchen {} to favourites for customer {}", kitchenId, customerPhone);
-        return toResponse(favouriteRepository.save(fav));
     }
 
     @Override
     @Transactional
     public void removeFavourite(String customerPhone, UUID kitchenId) {
-        if (!favouriteRepository.existsByCustomerPhoneAndKitchenId(customerPhone, kitchenId)) {
-            throw new ResourceNotFoundException("Kitchen not found in favourites");
+        log.info("removeFavourite: start, customerPhone={}, kitchenId={}", customerPhone, kitchenId);
+        try {
+            if (!favouriteRepository.existsByCustomerPhoneAndKitchenId(customerPhone, kitchenId)) {
+                throw new ResourceNotFoundException("Kitchen not found in favourites");
+            }
+            favouriteRepository.deleteByCustomerPhoneAndKitchenId(customerPhone, kitchenId);
+            log.debug("Removed kitchen {} from favourites for customer {}", kitchenId, customerPhone);
+            log.info("removeFavourite: end, customerPhone={}, kitchenId={}", customerPhone, kitchenId);
+        } catch (Exception e) {
+            log.error("removeFavourite: failed, customerPhone={}, kitchenId={}", customerPhone, kitchenId, e);
+            throw e;
         }
-        favouriteRepository.deleteByCustomerPhoneAndKitchenId(customerPhone, kitchenId);
-        log.debug("Removed kitchen {} from favourites for customer {}", kitchenId, customerPhone);
     }
 
     private FavouriteResponse toResponse(Favourite f) {

@@ -38,11 +38,14 @@ public class GeoapifyLocationSearchServiceImpl implements LocationSearchService 
 
     @Override
     public List<LocationSuggestion> search(String query) {
+        log.info("search: start, query={}", query);
         if (!StringUtils.hasText(apiKey)) {
             log.warn("GEOAPIFY_API_KEY not configured — returning empty suggestions");
+            log.info("search: end, query={}", query);
             return Collections.emptyList();
         }
         if (!StringUtils.hasText(query) || query.trim().length() < 2) {
+            log.info("search: end, query={}", query);
             return Collections.emptyList();
         }
 
@@ -65,6 +68,7 @@ System.out.println("Geoapify Autocomplete URL: " + url); // Debugging line
 System.out.println("body: " + body); // Debugging line
             if (body == null) {
                 log.warn("Geoapify returned an empty response body");
+                log.info("search: end, query={}", query);
                 return Collections.emptyList();
             }
 
@@ -72,12 +76,14 @@ System.out.println("body: " + body); // Debugging line
             List<Map<String, Object>> results =
                     (List<Map<String, Object>>) body.getOrDefault("results", Collections.emptyList());
 
-            return results.stream()
+            List<LocationSuggestion> suggestions = results.stream()
                     .map(this::toSuggestion)
                     .collect(Collectors.toList());
+            log.info("search: end, query={}", query);
+            return suggestions;
 
         } catch (RestClientException ex) {
-            log.error("Geoapify API call failed: {}", ex.getMessage());
+            log.error("search: failed, query={}", query, ex);
             return Collections.emptyList();
         }
     }

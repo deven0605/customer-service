@@ -21,27 +21,43 @@ public class CustomerLocationServiceImpl implements CustomerLocationService {
     @Override
     @Transactional
     public CustomerLocationResponse saveLocation(String customerPhone, SaveLocationRequest req) {
-        // Build entity with customerPhone as PK — Spring Data JPA calls em.merge(), which
-        // inserts on first save and updates on subsequent calls (natural upsert behaviour).
-        CustomerLocation location = CustomerLocation.builder()
-                .customerPhone(customerPhone)
-                .lat(req.getLat())
-                .lng(req.getLng())
-                .address(req.getAddress())
-                .build();
+        log.info("saveLocation: start, customerPhone={}", customerPhone);
+        try {
+            // Build entity with customerPhone as PK — Spring Data JPA calls em.merge(), which
+            // inserts on first save and updates on subsequent calls (natural upsert behaviour).
+            CustomerLocation location = CustomerLocation.builder()
+                    .customerPhone(customerPhone)
+                    .lat(req.getLat())
+                    .lng(req.getLng())
+                    .address(req.getAddress())
+                    .build();
 
-        CustomerLocation saved = locationRepository.save(location);
-        log.debug("Saved location for customer {}: lat={}, lng={}", customerPhone, req.getLat(), req.getLng());
-        return toResponse(saved);
+            CustomerLocation saved = locationRepository.save(location);
+            log.debug("Saved location for customer {}: lat={}, lng={}", customerPhone, req.getLat(), req.getLng());
+            CustomerLocationResponse response = toResponse(saved);
+            log.info("saveLocation: end, customerPhone={}", customerPhone);
+            return response;
+        } catch (Exception e) {
+            log.error("saveLocation: failed, customerPhone={}", customerPhone, e);
+            throw e;
+        }
     }
 
     @Override
     @Transactional(readOnly = true)
     public CustomerLocationResponse getLocation(String customerPhone) {
-        CustomerLocation location = locationRepository.findById(customerPhone)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "No location saved for this customer yet"));
-        return toResponse(location);
+        log.info("getLocation: start, customerPhone={}", customerPhone);
+        try {
+            CustomerLocation location = locationRepository.findById(customerPhone)
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "No location saved for this customer yet"));
+            CustomerLocationResponse response = toResponse(location);
+            log.info("getLocation: end, customerPhone={}", customerPhone);
+            return response;
+        } catch (Exception e) {
+            log.error("getLocation: failed, customerPhone={}", customerPhone, e);
+            throw e;
+        }
     }
 
     private CustomerLocationResponse toResponse(CustomerLocation loc) {

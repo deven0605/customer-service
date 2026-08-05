@@ -36,11 +36,14 @@ public class GooglePlacesLocationSearchServiceImpl implements LocationSearchServ
 
     @Override
     public List<LocationSuggestion> search(String query) {
+        log.info("search: start, query={}", query);
         if (!StringUtils.hasText(apiKey)) {
             log.warn("GOOGLE_PLACES_API_KEY not configured — returning empty suggestions");
+            log.info("search: end, query={}", query);
             return Collections.emptyList();
         }
         if (!StringUtils.hasText(query) || query.trim().length() < 2) {
+            log.info("search: end, query={}", query);
             return Collections.emptyList();
         }
 
@@ -62,6 +65,7 @@ public class GooglePlacesLocationSearchServiceImpl implements LocationSearchServ
 
             if (body == null || !"OK".equals(body.get("status"))) {
                 log.warn("Google Places returned status: {}", body != null ? body.get("status") : "null");
+                log.info("search: end, query={}", query);
                 return Collections.emptyList();
             }
 
@@ -69,12 +73,14 @@ public class GooglePlacesLocationSearchServiceImpl implements LocationSearchServ
             List<Map<String, Object>> predictions =
                     (List<Map<String, Object>>) body.getOrDefault("predictions", Collections.emptyList());
 
-            return predictions.stream()
+            List<LocationSuggestion> suggestions = predictions.stream()
                     .map(this::toPrediction)
                     .collect(Collectors.toList());
+            log.info("search: end, query={}", query);
+            return suggestions;
 
         } catch (RestClientException ex) {
-            log.error("Google Places API call failed: {}", ex.getMessage());
+            log.error("search: failed, query={}", query, ex);
             return Collections.emptyList();
         }
     }

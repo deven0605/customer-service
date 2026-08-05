@@ -58,6 +58,10 @@ management:
       show-details: when-authorized
 
 logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%C{1}.%M:%L] - %msg%n"
+  file:
+    name: D:/logs/backend/customer-service/.logs
   level:
     com.thalicloud: DEBUG
     org.springframework.security: INFO
